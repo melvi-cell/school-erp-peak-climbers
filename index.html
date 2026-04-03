@@ -840,11 +840,16 @@
 <!-- Login Overlay -->
 <div id="loginOverlay">
     <div class="login-container">
-        <h2>🏫 Shiners Peak Climbers School</h2>
-        <h3>Admin Login</h3>
+        <div style="text-align: center; margin-bottom: 25px;">
+            <img src="Logo.jpeg" alt="Shiners Peak Climbers Logo" style="height: 90px; width: 90px; border-radius: 50%; border: 3px solid #3498db; background: white; object-fit: contain;">
+        </div>
+        <h2 style="margin-top: 0; margin-bottom: 10px;">Shiners Peak Climbers School</h2>
+        <h3 style="color: #7f8c8d; margin-bottom: 30px; font-weight: normal;">Admin Login</h3>
+        
         <input type="text" id="loginUsername" placeholder="Username" value="admin">
         <input type="password" id="loginPassword" placeholder="Password" value="1788">
         <button onclick="login()">Login</button>
+        
         <div class="forgot-password" onclick="showForgotPasswordModal()">Forgot Password?</div>
         <div id="otpStatus"></div>
     </div>
