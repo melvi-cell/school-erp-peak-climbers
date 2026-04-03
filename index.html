@@ -873,17 +873,23 @@
 
 <div class="container" id="mainContainer">
     <!-- Header -->
-    <div class="main-header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1 id="schoolNameHeader">🏫 Shiners Peak Climbers School</h1>
-            <div>
-                <span class="admin-badge" id="adminBadge">Admin</span>
-                <button class="btn btn-purple" onclick="toggleDarkMode()" style="margin-left: 15px;">🌓 DARK MODE</button>
-                <button class="btn btn-danger" onclick="logout()" style="margin-left: 15px;">Logout</button>
+  <div class="main-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <img src="Logo.jpeg" alt="Shiners Peak Logo" style="height: 80px; width: 80px; border-radius: 50%; border: 3px solid white; background: white; object-fit: contain;">
+            <div style="text-align: left;">
+                <h1 id="schoolNameHeader" style="margin: 0;">Shiners Peak Climbers School</h1>
+                <p style="margin: 0; font-weight: bold; letter-spacing: 1px;">AIMING HIGHER DAILY</p>
             </div>
         </div>
-        <p>ULTRA School ERP System with Firebase Cloud Sync</p>
+        <div>
+            <span class="admin-badge" id="adminBadge">Admin</span>
+            <button class="btn btn-purple" onclick="toggleDarkMode()" style="margin-left: 15px;">🌓 DARK MODE</button>
+            <button class="btn btn-danger" onclick="logout()" style="margin-left: 15px;">Logout</button>
+        </div>
     </div>
+    <p style="margin-top: 10px; opacity: 0.8;">ULTRA School ERP System • ESTD 2024</p>
+</div>
     
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
