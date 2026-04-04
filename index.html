@@ -3488,9 +3488,9 @@ function showClearAllModal() {
 }
 
 function clearAllRollCallData() {
-    const confirm = document.getElementById('confirmClearAll').value;
+    const confirmText = document.getElementById('confirmClearAll').value;
     
-    if (confirm !== 'CLEAR ALL') {
+    if (confirmText !== 'CLEAR ALL') {
         alert('Please type CLEAR ALL to confirm');
         return;
     }
@@ -3608,19 +3608,6 @@ function saveStudent() {
         return;
     }
     
-    if (editingIndex >= 0) {
-        const existingIndex = students.findIndex(s => s.admission === admission);
-        if (existingIndex !== -1 && existingIndex !== editingIndex) {
-            alert('❌ Admission number already exists');
-            return;
-        }
-    } else {
-        if (students.some(s => s.admission === admission)) {
-            alert('❌ Admission number already exists');
-            return;
-        }
-    }
-    
     const student = {
         admission: admission,
         qr: admission,
@@ -3643,24 +3630,38 @@ function saveStudent() {
     };
     
     if (editingIndex >= 0) {
+        // Update existing student
         students[editingIndex] = student;
         logActivity(`Updated student: ${name}`);
         showNotification('✅ Student updated successfully!');
     } else {
+        // Check for duplicate admission number
+        if (students.some(s => s.admission === admission)) {
+            alert('❌ Admission number already exists!');
+            return;
+        }
         students.push(student);
         logActivity(`Added student: ${name}`);
         showNotification('✅ Student added successfully!');
     }
     
+    // Save to localStorage
     localStorage.setItem('students', JSON.stringify(students));
+    
+    // Refresh displays
     loadStudents();
     loadClasses();
     loadKEPSEAStudents();
     loadKJSEAStudents();
+    updateStatistics();
+    
     closeModal('studentModal');
     
-    if (confirm('Sync this student to Firebase cloud?')) {
-        syncStudentsToFirebase();
+    // Sync to Firebase
+    if (navigator.onLine && typeof syncStudentsToFirebase !== 'undefined') {
+        if (confirm('Sync this change to Firebase cloud?')) {
+            syncStudentsToFirebase();
+        }
     }
 }
 
@@ -3693,18 +3694,60 @@ function editStudent(admission) {
 }
 
 function deleteStudent(admission) {
-    if (confirm('⚠️ Are you sure you want to delete this student?')) {
+    if (confirm('⚠️ Are you sure you want to delete this student? This action cannot be undone!')) {
+        // Get student name for logging before deletion
+        const studentToDelete = students.find(s => s.admission === admission);
+        const studentName = studentToDelete ? studentToDelete.name : admission;
+        
+        // Remove from students array
         students = students.filter(s => s.admission !== admission);
+        
+        // Save to localStorage immediately
         localStorage.setItem('students', JSON.stringify(students));
+        
+        // Also remove any exam results for this student
+        const beforeResultsCount = examResults.length;
+        examResults = examResults.filter(r => r.admission !== admission);
+        if (beforeResultsCount !== examResults.length) {
+            localStorage.setItem('examResults', JSON.stringify(examResults));
+        }
+        
+        // Also remove any fee records for this student
+        const beforeFeesCount = fees.length;
+        fees = fees.filter(f => f.admission !== admission);
+        if (beforeFeesCount !== fees.length) {
+            localStorage.setItem('fees', JSON.stringify(fees));
+        }
+        
+        // Also remove from KEPSEA/KJSEA registrations
+        if (knecRegistrations.kepsea) {
+            knecRegistrations.kepsea = knecRegistrations.kepsea.filter(r => r.admission !== admission);
+        }
+        if (knecRegistrations.kjsea) {
+            knecRegistrations.kjsea = knecRegistrations.kjsea.filter(r => r.admission !== admission);
+        }
+        localStorage.setItem('knecRegistrations', JSON.stringify(knecRegistrations));
+        
+        // Refresh all displays
         loadStudents();
         loadClasses();
         loadKEPSEAStudents();
         loadKJSEAStudents();
-        logActivity(`Deleted student: ${admission}`);
-        showNotification('✅ Student deleted');
+        updateStatistics();
+        updateFeeStats();
+        
+        // Also sync deletion to Firebase if online
+        if (navigator.onLine && typeof db !== 'undefined') {
+            db.collection('students').doc(admission).delete().catch(e => console.log('Firebase delete error:', e));
+            db.collection('examResults').where('admission', '==', admission).get().then(snapshot => {
+                snapshot.forEach(doc => { doc.ref.delete(); });
+            }).catch(e => console.log('Firebase exam results delete error:', e));
+        }
+        
+        logActivity(`Deleted student: ${studentName} (${admission})`);
+        showNotification(`✅ Student ${studentName} deleted successfully!`);
     }
 }
-
 function filterStudents() {
     const search = document.getElementById('searchStudents').value.toUpperCase();
     document.querySelectorAll('#studentsList tr').forEach(tr => {
@@ -3770,7 +3813,6 @@ function handleExcelUpload() {
     
     reader.readAsArrayBuffer(file);
 }
-
 function importFromExcel() {
     if (excelData.length === 0) {
         alert('Please upload an Excel file first');
@@ -3778,6 +3820,8 @@ function importFromExcel() {
     }
     
     let count = 0;
+    let duplicates = 0;
+    
     excelData.forEach(row => {
         if (row.length >= 2 && row[0] && row[1]) {
             const admission = row[0]?.toString().trim() || generateAdmissionNumber();
@@ -3796,20 +3840,31 @@ function importFromExcel() {
                     parentEmail: row[9]?.toString().trim() || ''
                 });
                 count++;
+            } else {
+                duplicates++;
             }
         }
     });
     
     if (count > 0) {
+        // Save to localStorage
         localStorage.setItem('students', JSON.stringify(students));
+        
+        // Refresh displays
         loadStudents();
         loadClasses();
         loadKEPSEAStudents();
         loadKJSEAStudents();
-        logActivity(`Imported ${count} students from Excel`);
-        showNotification(`✅ Imported ${count} students!`);
+        
+        logActivity(`Imported ${count} students from Excel (${duplicates} duplicates skipped)`);
+        showNotification(`✅ Imported ${count} new students! ${duplicates} duplicates skipped.`);
+        
+        // Sync to Firebase if online
+        if (navigator.onLine && typeof syncStudentsToFirebase !== 'undefined') {
+            syncStudentsToFirebase();
+        }
     } else {
-        alert('❌ No valid data found');
+        alert('❌ No new valid data found. All records were duplicates or invalid.');
     }
     closeModal('importModal');
 }
