@@ -1000,7 +1000,7 @@
                 <button class="btn btn-danger" onclick="showClearAllModal()"><span>⚠️</span> CLEAR ALL DATA</button>
             </div>
             <div class="control-row">
-                <button class="btn btn-info" onclick="syncAttendanceToFirebase()"><span>☁️</span> SYNC ATTENDANCE</button>
+                <span class="badge badge-info">🔄 Auto-sync enabled</span>
                 <button class="btn btn-success" onclick="syncAllToFirebase()"><span>🔄</span> SYNC ALL TO CLOUD</button>
                 <span id="firebaseStatusBadge" class="firebase-status firebase-checking">Checking Firebase...</span>
             </div>
@@ -3153,7 +3153,7 @@ function initializeSystem() {
     setTimeout(() => {
         checkFirebaseConnection();
         if (navigator.onLine) {
-            loadFromFirebase().catch(e => console.log('Firebase auto-load skipped'));
+            loadData(); // Loads attendance from Firebase
         }
     }, 2000);
     
@@ -3236,6 +3236,7 @@ function quickAddAttendance(className) {
     checkAttendanceRisks();
     saveAttendanceToLocal();
     showNotification(`✅ ${className} attendance updated!`);
+    autoSaveAttendanceToFirebase();
 }
 
 function editClass(className) {
@@ -3291,6 +3292,7 @@ function editClass(className) {
     saveAttendanceToLocal();
     logActivity(`Updated attendance for ${className}`);
     showNotification(`✅ ${className} updated`);
+    autoSaveAttendanceToFirebase();
 }
 
 function showRollCallEntryForm() {
@@ -3391,6 +3393,7 @@ function clearSingleClass(className) {
             updateStatistics();
             saveAttendanceToLocal();
             showNotification(`✅ ${className} cleared`);
+            autoSaveAttendanceToFirebase();
         }
     }
 }
@@ -3512,6 +3515,7 @@ function clearAllRollCallData() {
     closeModal('clearAllRollCallModal');
     logActivity('Cleared all roll call data');
     showNotification('✅ All roll call data cleared');
+    autoSaveAttendanceToFirebase();
 }
 
 // ========== STUDENT FUNCTIONS ==========
@@ -5118,6 +5122,8 @@ function editClassDetails(className) {
     localStorage.setItem('classes', JSON.stringify(classes));
     loadClasses();
     showNotification('✅ Class details updated');
+    // Auto-save to Firebase
+autoSaveAttendanceToFirebase();
 }
 
 function printClassReport(className) {
@@ -6855,38 +6861,92 @@ function switchTab(tab) {
 
 function toggleDarkMode() { const currentTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark'; document.getElementById('themeSelect').value = currentTheme; changeTheme(); }
 
+// ========== ROLL CALL DATA MANAGEMENT (Auto-Sync with Firebase only) ==========
 async function loadData() {
-    const btn = document.getElementById('fetchBtn');
-    if (btn) { btn.innerText = "⏳ Syncing..."; btn.disabled = true; }
+    showNotification('📋 Loading attendance data from Firebase...');
     try {
-        if (!navigator.onLine) { loadOfflineData(); showNotification('📴 Offline mode - using cached data'); return; }
-        const res = await fetch('https://script.google.com/macros/s/AKfycbzt-Fk8eAIxH3CUkRKEUFhccYSojbVNo9KiwkxxI2UPrN74W14cd-G8pyhdtMGIx4et/exec');
-        const data = await res.json();
-        const latestEntries = {};
-        data.slice(1).forEach(row => { if(row[0]) latestEntries[row[0].toString().trim()] = row; });
-        classList.forEach(cls => {
-            const row = latestEntries[cls];
-            const tr = document.querySelector(`tr[data-class="${cls}"]`);
-            if (row && tr) {
-                const boys = parseInt(row[1]) || 0; const girls = parseInt(row[2]) || 0; const lunch = parseInt(row[5]) || 0;
-                const newStudents = parseInt(row[6]) || 0; const nr = parseInt(row[7]) || 0; const names = row[9] || "-";
-                const nameCount = names === "-" ? 0 : names.split(',').length; const total = boys + girls;
-                const percent = total > 0 ? ((total - nameCount) / total * 100).toFixed(1) : 100;
-                tr.querySelector('.c-b').innerText = boys; tr.querySelector('.c-g').innerText = girls; tr.querySelector('.c-t').innerText = total;
-                tr.querySelector('.c-l').innerText = lunch; tr.querySelector('.c-n').innerText = newStudents; tr.querySelector('.c-nr').innerText = nr;
-                tr.querySelector('.c-a').innerText = nameCount; tr.querySelector('.c-names').innerText = names; tr.querySelector('.c-percent').innerText = percent + '%';
-                saveToHistory(cls, { date: new Date().toISOString(), boys, girls, total, absent: nameCount });
-                if(row[10]) document.getElementById('syncTime').innerText = "Last Updated: " + new Date(row[10]).toLocaleString();
+        const today = new Date().toISOString().split('T')[0];
+        const attendanceDoc = await db.collection('attendance').doc(today).get();
+        
+        if (attendanceDoc.exists && attendanceDoc.data().classes) {
+            const attendanceData = attendanceDoc.data();
+            if (attendanceData.classes) {
+                attendanceData.classes.forEach(cls => {
+                    const row = document.querySelector(`tr[data-class="${cls.class}"]`);
+                    if (row) {
+                        row.querySelector('.c-b').innerText = cls.boys;
+                        row.querySelector('.c-g').innerText = cls.girls;
+                        row.querySelector('.c-t').innerText = cls.total;
+                        row.querySelector('.c-l').innerText = cls.lunch;
+                        row.querySelector('.c-n').innerText = cls.new;
+                        row.querySelector('.c-nr').innerText = cls.nr;
+                        row.querySelector('.c-a').innerText = cls.absent;
+                        row.querySelector('.c-names').innerText = cls.absentNames;
+                        row.querySelector('.c-percent').innerText = cls.attendancePercent;
+                    }
+                });
+                calculateTotals();
+                updateStatistics();
+                checkAttendanceRisks();
+                const syncTime = attendanceData.timestamp?.toDate ? new Date(attendanceData.timestamp.toDate()).toLocaleString() : new Date().toLocaleString();
+                document.getElementById('syncTime').innerText = `Last Updated: ${syncTime}`;
+                showNotification('✅ Attendance loaded from Firebase!');
             }
-        });
-        localStorage.setItem('lastAttendance', JSON.stringify({ data: latestEntries, timestamp: new Date().toISOString() }));
-        calculateTotals(); updateStatistics(); checkAttendanceRisks();
-        showNotification('✅ Data synced successfully!');
-        if (confirm('Sync this data to Firebase cloud?')) syncAttendanceToFirebase();
-    } catch (e) { console.error('Fetch error:', e); alert("⚠️ Fetch failed. Loading offline data..."); loadOfflineData(); }
-    finally { if (btn) { btn.innerText = "🔄 FETCH DAILY DATA"; btn.disabled = false; } }
+        } else {
+            buildTable();
+            showNotification('📋 No attendance data for today. Create new entries by clicking EDIT on any class.');
+        }
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        showNotification('⚠️ Error loading from Firebase. Using local data.');
+        loadOfflineData();
+    }
 }
 
+// ========== ROLL CALL AUTO-SAVE TO FIREBASE ==========
+async function autoSaveAttendanceToFirebase() {
+    if (!navigator.onLine) {
+        console.log('Offline - attendance saved to local only');
+        showNotification('📴 Offline - changes saved locally only');
+        return;
+    }
+    
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const attendanceData = [];
+        
+        document.querySelectorAll('#rollTable tr').forEach(row => {
+            const className = row.getAttribute('data-class');
+            if (className) {
+                attendanceData.push({
+                    class: className,
+                    boys: parseInt(row.querySelector('.c-b')?.innerText) || 0,
+                    girls: parseInt(row.querySelector('.c-g')?.innerText) || 0,
+                    total: parseInt(row.querySelector('.c-t')?.innerText) || 0,
+                    lunch: parseInt(row.querySelector('.c-l')?.innerText) || 0,
+                    new: parseInt(row.querySelector('.c-n')?.innerText) || 0,
+                    nr: parseInt(row.querySelector('.c-nr')?.innerText) || 0,
+                    absent: parseInt(row.querySelector('.c-a')?.innerText) || 0,
+                    absentNames: row.querySelector('.c-names')?.innerText || '-',
+                    attendancePercent: row.querySelector('.c-percent')?.innerText || '0%'
+                });
+            }
+        });
+        
+        await db.collection('attendance').doc(today).set({
+            date: today,
+            classes: attendanceData,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        console.log('✅ Attendance auto-saved to Firebase');
+        document.getElementById('syncTime').innerText = `Last Updated: ${new Date().toLocaleString()}`;
+        showNotification('💾 Attendance saved to cloud');
+    } catch (error) {
+        console.error('Auto-save error:', error);
+        showNotification('❌ Failed to save to Firebase');
+    }
+}
 function loadOfflineData() {
     const cached = localStorage.getItem('lastAttendance');
     if (cached) {
