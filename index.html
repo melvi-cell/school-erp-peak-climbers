@@ -1000,9 +1000,7 @@
                 <button class="btn btn-danger" onclick="showClearAllModal()"><span>⚠️</span> CLEAR ALL DATA</button>
             </div>
             <div class="control-row">
-                <button class="btn btn-info" onclick="syncStudentsToFirebase()"><span>☁️</span> SYNC STUDENTS</button>
                 <button class="btn btn-info" onclick="syncAttendanceToFirebase()"><span>☁️</span> SYNC ATTENDANCE</button>
-                <button class="btn btn-warning" onclick="loadFromFirebase()"><span>📥</span> LOAD FROM FIREBASE</button>
                 <button class="btn btn-success" onclick="syncAllToFirebase()"><span>🔄</span> SYNC ALL TO CLOUD</button>
                 <span id="firebaseStatusBadge" class="firebase-status firebase-checking">Checking Firebase...</span>
             </div>
@@ -1769,21 +1767,20 @@
         </div>
         
         <!-- Firebase Settings Panel -->
-        <div class="paper" style="margin-top: 20px;">
-            <h4>☁️ Firebase Cloud Sync</h4>
-            <p>Project: <strong>shiners-peak-47e5c</strong></p>
-            <p>Current Firebase Status: <span id="firebaseStatus" class="firebase-status firebase-checking">Checking...</span></p>
-            <div class="control-row">
-                <button class="btn btn-info" onclick="checkFirebaseConnection()">Check Connection</button>
-                <button class="btn btn-primary" onclick="syncAllToFirebase()">Sync All to Cloud</button>
-                <button class="btn btn-warning" onclick="loadFromFirebase()">Restore from Cloud</button>
-                <button class="btn btn-success" onclick="setupFirebaseCollections()">Setup Collections</button>
-            </div>
-            <div class="form-group">
-                <label>Last Sync Status</label>
-                <input type="text" id="lastSyncStatus" value="Not synced yet" readonly class="search-box">
-            </div>
-        </div>
+<div class="paper" style="margin-top: 20px;">
+    <h4>☁️ Firebase Cloud Sync</h4>
+    <p>Project: <strong>shiners-peak-47e5c</strong></p>
+    <p>Current Firebase Status: <span id="firebaseStatus" class="firebase-status firebase-checking">Checking...</span></p>
+    <div class="control-row">
+        <button class="btn btn-info" onclick="checkFirebaseConnection()">Check Connection</button>
+        <button class="btn btn-primary" onclick="syncAllToFirebase()">Sync All to Cloud</button>
+        <button class="btn btn-success" onclick="setupFirebaseCollections()">Setup Collections</button>
+    </div>
+    <div class="form-group">
+        <label>Last Sync Status</label>
+        <input type="text" id="lastSyncStatus" value="Not synced yet" readonly class="search-box">
+    </div>
+</div>
     </div>
 </div>
 
@@ -3970,6 +3967,13 @@ function saveTeacher() {
         return;
     }
     
+    // Check for duplicate TSC when adding new teacher
+    const existingTeacher = teachers.find(t => t.tsc === tsc);
+    if (existingTeacher && editingIndex === -1) {
+        alert('❌ A teacher with this TSC number already exists!');
+        return;
+    }
+    
     const teacher = {
         tsc: tsc,
         name: name,
@@ -3985,29 +3989,132 @@ function saveTeacher() {
         emergency: document.getElementById('teacherEmergency').value.trim()
     };
     
-    teachers.push(teacher);
+    if (editingIndex >= 0) {
+        // Update existing teacher
+        teachers[editingIndex] = teacher;
+        logActivity(`Updated teacher: ${name}`);
+        showNotification('✅ Teacher updated successfully!');
+    } else {
+        // Add new teacher
+        teachers.push(teacher);
+        logActivity(`Added teacher: ${name}`);
+        showNotification('✅ Teacher added successfully!');
+    }
+    
+    // Save to localStorage
     localStorage.setItem('teachers', JSON.stringify(teachers));
+    
+    // Refresh displays
     loadTeachers();
+    loadClassSelectors();
+    loadLessonPlanTeachers();
+    loadClasses();
+    
     closeModal('teacherModal');
-    logActivity(`Added teacher: ${name}`);
-    showNotification('✅ Teacher added successfully!');
-    syncTeachersToFirebase();
-}
-
-function editTeacher(tsc) {
-    alert('Edit teacher functionality - Click edit in table to modify');
-}
-
-function deleteTeacher(tsc) {
-    if (confirm('⚠️ Are you sure you want to delete this teacher?')) {
-        teachers = teachers.filter(t => t.tsc !== tsc);
-        localStorage.setItem('teachers', JSON.stringify(teachers));
-        loadTeachers();
-        logActivity(`Deleted teacher: ${tsc}`);
-        showNotification('✅ Teacher deleted');
+    
+    // Reset editing index
+    editingIndex = -1;
+    
+    // Sync to Firebase
+    if (navigator.onLine && typeof syncTeachersToFirebase !== 'undefined') {
+        syncTeachersToFirebase();
     }
 }
+function editTeacher(tsc) {
+    const index = teachers.findIndex(t => t.tsc === tsc);
+    if (index === -1) return;
+    
+    editingIndex = index;
+    const teacher = teachers[index];
+    
+    document.getElementById('teacherTSC').value = teacher.tsc || '';
+    document.getElementById('teacherName').value = teacher.name || '';
+    document.getElementById('teacherGender').value = teacher.gender || '';
+    document.getElementById('teacherDOB').value = teacher.dob || '';
+    document.getElementById('teacherEmploymentDate').value = teacher.employmentDate || '';
+    document.getElementById('teacherSubjects').value = teacher.subjects || '';
+    document.getElementById('teacherClasses').value = teacher.classes || '';
+    document.getElementById('teacherQualification').value = teacher.qualification || '';
+    document.getElementById('teacherCertifications').value = teacher.certifications || '';
+    document.getElementById('teacherPhone').value = teacher.phone || '';
+    document.getElementById('teacherEmail').value = teacher.email || '';
+    document.getElementById('teacherEmergency').value = teacher.emergency || '';
+    
+    // Change modal title to indicate edit mode
+    document.querySelector('#teacherModal h3').innerText = '✏️ Edit Teacher';
+    document.getElementById('teacherModal').style.display = 'flex';
+}
 
+// Also update showAddTeacherModal to reset the modal title
+function showAddTeacherModal() {
+    editingIndex = -1;
+    document.querySelector('#teacherModal h3').innerText = '➕ Add New Teacher';
+    document.getElementById('teacherTSC').value = generateTSCNumber();
+    document.getElementById('teacherName').value = '';
+    document.getElementById('teacherGender').value = '';
+    document.getElementById('teacherDOB').value = '';
+    document.getElementById('teacherEmploymentDate').value = '';
+    document.getElementById('teacherSubjects').value = '';
+    document.getElementById('teacherClasses').value = '';
+    document.getElementById('teacherQualification').value = '';
+    document.getElementById('teacherCertifications').value = '';
+    document.getElementById('teacherPhone').value = '';
+    document.getElementById('teacherEmail').value = '';
+    document.getElementById('teacherEmergency').value = '';
+    document.getElementById('teacherModal').style.display = 'flex';
+}
+function deleteTeacher(tsc) {
+    if (confirm('⚠️ Are you sure you want to delete this teacher? This action cannot be undone!')) {
+        // Get teacher name for logging before deletion
+        const teacherToDelete = teachers.find(t => t.tsc === tsc);
+        const teacherName = teacherToDelete ? teacherToDelete.name : tsc;
+        
+        // Remove from teachers array
+        teachers = teachers.filter(t => t.tsc !== tsc);
+        
+        // Save to localStorage immediately
+        localStorage.setItem('teachers', JSON.stringify(teachers));
+        
+        // Also remove any lessons assigned to this teacher
+        const beforeLessonsCount = lessons.length;
+        lessons = lessons.filter(l => l.teacher !== tsc);
+        if (beforeLessonsCount !== lessons.length) {
+            localStorage.setItem('lessons', JSON.stringify(lessons));
+        }
+        
+        // Also remove from class teacher assignments
+        classes.forEach(c => {
+            if (c.teacher === tsc) {
+                c.teacher = null;
+            }
+        });
+        localStorage.setItem('classes', JSON.stringify(classes));
+        
+        // Also remove from trip teacher assignments
+        trips.forEach(t => {
+            if (t.teacherTSC === tsc) {
+                t.teacherTSC = null;
+                t.teacherName = 'Not Assigned';
+            }
+        });
+        localStorage.setItem('trips', JSON.stringify(trips));
+        
+        // Refresh displays
+        loadTeachers();
+        loadClassSelectors();
+        loadLessonPlanTeachers();
+        loadClasses();
+        updateStatistics();
+        
+        // Also sync deletion to Firebase if online
+        if (navigator.onLine && typeof db !== 'undefined') {
+            db.collection('teachers').doc(tsc).delete().catch(e => console.log('Firebase teacher delete error:', e));
+        }
+        
+        logActivity(`Deleted teacher: ${teacherName} (${tsc})`);
+        showNotification(`✅ Teacher ${teacherName} deleted successfully!`);
+    }
+}
 function filterTeachers() {
     const search = document.getElementById('searchTeachers').value.toUpperCase();
     document.querySelectorAll('#teachersList tr').forEach(tr => {
@@ -4022,7 +4129,21 @@ function exportTeachers() {
         return;
     }
     
-    const ws = XLSX.utils.json_to_sheet(teachers);
+    // Create a clean copy without circular references
+    const exportData = teachers.map(t => ({
+        'TSC Number': t.tsc,
+        'Full Name': t.name,
+        'Gender': t.gender,
+        'Subjects': t.subjects,
+        'Classes': t.classes,
+        'Phone': t.phone,
+        'Email': t.email,
+        'Qualification': t.qualification,
+        'Employment Date': t.employmentDate,
+        'Date of Birth': t.dob
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Teachers");
     XLSX.writeFile(wb, `teachers_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -4038,15 +4159,16 @@ function importTeachers() {
     const data = document.getElementById('teacherImportData').value;
     const lines = data.split('\n');
     let count = 0;
+    let duplicates = 0;
     
     lines.forEach(line => {
         if (line.trim()) {
             const parts = line.split(',');
             if (parts.length >= 2) {
-                const tsc = parts[0].trim() || generateTSCNumber();
+                const tsc = parts[0].trim();
                 if (!teachers.some(t => t.tsc === tsc)) {
                     teachers.push({
-                        tsc: tsc,
+                        tsc: tsc || generateTSCNumber(),
                         name: parts[1].trim(),
                         gender: parts[2]?.trim() || '',
                         subjects: parts[3]?.trim() || '',
@@ -4056,22 +4178,34 @@ function importTeachers() {
                         qualification: parts[7]?.trim() || ''
                     });
                     count++;
+                } else {
+                    duplicates++;
                 }
             }
         }
     });
     
     if (count > 0) {
+        // Save to localStorage
         localStorage.setItem('teachers', JSON.stringify(teachers));
+        
+        // Refresh displays
         loadTeachers();
-        logActivity(`Imported ${count} teachers`);
-        showNotification(`✅ Imported ${count} teachers!`);
+        loadClassSelectors();
+        loadLessonPlanTeachers();
+        
+        logActivity(`Imported ${count} teachers (${duplicates} duplicates skipped)`);
+        showNotification(`✅ Imported ${count} new teachers! ${duplicates} duplicates skipped.`);
+        
+        // Sync to Firebase
+        if (navigator.onLine && typeof syncTeachersToFirebase !== 'undefined') {
+            syncTeachersToFirebase();
+        }
     } else {
-        alert('❌ No valid data found');
+        alert('❌ No new valid data found. All records were duplicates or invalid.');
     }
     closeModal('teacherImportModal');
 }
-
 function calculateTeacherPerformance(tsc) {
     return 85;
 }
@@ -6042,12 +6176,258 @@ function generateTeacherReport() {
     return html;
 }
 
-function generateExamReport(startDate, endDate, className) { return `<div class="report-header"><h3>📝 Exam Report</h3><p>Coming soon</p></div>`; }
-function generateFeeReport(className) { return `<div class="report-header"><h3>💰 Fee Report</h3><p>Coming soon</p></div>`; }
-function generateTripReport(startDate, endDate) { return `<div class="report-header"><h3>🚌 Trip Report</h3><p>Coming soon</p></div>`; }
-function generateFinancialReport() { return `<div class="report-header"><h3>💰 Financial Summary</h3><p>Coming soon</p></div>`; }
-function generateClassReport(className) { return `<div class="report-header"><h3>🏫 Class Report</h3><p>Coming soon</p></div>`; }
-
+function generateExamReport(startDate, endDate, className) {
+    let filteredResults = examResults;
+    let filteredExams = exams;
+    
+    if (className !== 'all') {
+        const classStudents = students.filter(s => s.class === className).map(s => s.admission);
+        filteredResults = examResults.filter(r => classStudents.includes(r.admission));
+    }
+    
+    if (startDate) {
+        filteredExams = exams.filter(e => e.startDate >= startDate);
+        filteredResults = filteredResults.filter(r => filteredExams.some(e => e.id === r.examId));
+    }
+    
+    if (endDate) {
+        filteredExams = exams.filter(e => e.endDate <= endDate);
+        filteredResults = filteredResults.filter(r => filteredExams.some(e => e.id === r.examId));
+    }
+    
+    if (filteredResults.length === 0) {
+        return `<div class="report-header"><h3>📝 Exam Report</h3><p>No exam data found for selected criteria.</p></div>`;
+    }
+    
+    // Group by exam
+    const examGroups = {};
+    filteredResults.forEach(r => {
+        const exam = exams.find(e => e.id === r.examId);
+        if (exam) {
+            if (!examGroups[exam.id]) {
+                examGroups[exam.id] = { name: exam.name, term: exam.term, year: exam.year, results: [] };
+            }
+            examGroups[exam.id].results.push(r);
+        }
+    });
+    
+    let html = `<div class="report-header"><h3>📝 Exam Report</h3>
+        <p>Period: ${startDate || 'All'} to ${endDate || 'All'} | Class: ${className === 'all' ? 'All Classes' : className}</p></div>`;
+    
+    for (const examId in examGroups) {
+        const exam = examGroups[examId];
+        const scores = exam.results.map(r => r.score);
+        const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const highest = Math.max(...scores);
+        const lowest = Math.min(...scores);
+        
+        html += `<h4>${exam.name} (Term ${exam.term}, ${exam.year})</h4>
+        <div class="stats-grid" style="margin-bottom: 15px;">
+            <div class="stat-card"><div class="stat-label">Average</div><div class="stat-number">${avgScore.toFixed(1)}%</div></div>
+            <div class="stat-card"><div class="stat-label">Highest</div><div class="stat-number">${highest}%</div></div>
+            <div class="stat-card"><div class="stat-label">Lowest</div><div class="stat-number">${lowest}%</div></div>
+            <div class="stat-card"><div class="stat-label">Students</div><div class="stat-number">${exam.results.length}</div></div>
+        </div>
+        <table class="report-table"><thead><tr><th>Admission</th><th>Student Name</th><th>Subject</th><th>Score</th><th>Grade</th></tr></thead><tbody>`;
+        
+        exam.results.sort((a, b) => b.score - a.score).forEach(r => {
+            const student = students.find(s => s.admission === r.admission);
+            html += `<tr><td>${r.admission}</td><td>${student?.name || 'N/A'}</td>
+                <td>${r.subject}</td><td>${r.score}%</td>
+                <td class="grade-${r.gradeLetter.toLowerCase()}">${r.gradeLetter}</td></tr>`;
+        });
+        html += `</tbody></table><br>`;
+    }
+    return html;
+}
+function generateFeeReport(className) {
+    let filteredFees = fees;
+    let filteredStudents = students;
+    
+    if (className !== 'all') {
+        filteredStudents = students.filter(s => s.class === className);
+        const admissions = filteredStudents.map(s => s.admission);
+        filteredFees = fees.filter(f => admissions.includes(f.admission));
+    }
+    
+    if (filteredFees.length === 0) {
+        return `<div class="report-header"><h3>💰 Fee Report</h3><p>No fee records found for selected criteria.</p></div>`;
+    }
+    
+    // Group by student
+    const studentPayments = {};
+    filteredFees.forEach(f => {
+        if (!studentPayments[f.admission]) {
+            studentPayments[f.admission] = { payments: [], total: 0 };
+        }
+        studentPayments[f.admission].payments.push(f);
+        studentPayments[f.admission].total += f.amount;
+    });
+    
+    let totalCollected = filteredFees.reduce((sum, f) => sum + f.amount, 0);
+    let totalExpected = 0;
+    filteredStudents.forEach(s => { totalExpected += getExpectedFee(s.class, s.route); });
+    const outstanding = totalExpected - totalCollected;
+    const rate = totalExpected > 0 ? ((totalCollected / totalExpected) * 100).toFixed(1) : 0;
+    
+    let html = `<div class="report-header"><h3>💰 Fee Report</h3>
+        <p>Class: ${className === 'all' ? 'All Classes' : className} | Term: ${settings.currentTerm}</p></div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Total Expected</div><div class="stat-number">KSh ${totalExpected.toLocaleString()}</div></div>
+            <div class="stat-card"><div class="stat-label">Total Collected</div><div class="stat-number">KSh ${totalCollected.toLocaleString()}</div></div>
+            <div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-number">KSh ${outstanding.toLocaleString()}</div></div>
+            <div class="stat-card"><div class="stat-label">Collection Rate</div><div class="stat-number">${rate}%</div></div>
+        </div>
+        <table class="report-table"><thead><tr><th>Admission</th><th>Student Name</th><th>Class</th><th>Total Paid</th><th>Balance</th><th>Status</th></tr></thead><tbody>`;
+    
+    filteredStudents.forEach(s => {
+        const paid = studentPayments[s.admission]?.total || 0;
+        const expected = getExpectedFee(s.class, s.route);
+        const balance = expected - paid;
+        const status = balance <= 0 ? '✅ Paid' : (balance < expected/2 ? '⚠️ Partial' : '❌ Defaulting');
+        html += `<tr><td>${s.admission}</td><td>${s.name}</td><td>${s.class}</td>
+            <td>KSh ${paid.toLocaleString()}</td><td>KSh ${balance.toLocaleString()}</td>
+            <td>${status}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    return html;
+}
+function generateTripReport(startDate, endDate) {
+    let filteredTrips = trips;
+    
+    if (startDate) {
+        filteredTrips = filteredTrips.filter(t => t.date >= startDate);
+    }
+    if (endDate) {
+        filteredTrips = filteredTrips.filter(t => t.date <= endDate);
+    }
+    
+    if (filteredTrips.length === 0) {
+        return `<div class="report-header"><h3>🚌 Trip Report</h3><p>No trips found for selected period.</p></div>`;
+    }
+    
+    let html = `<div class="report-header"><h3>🚌 Trip Report</h3>
+        <p>Period: ${startDate || 'All'} to ${endDate || 'All'}</p></div>
+        <table class="report-table"><thead><tr>
+            <th>Destination</th><th>Date</th><th>Teacher</th><th>Classes</th><th>Students</th><th>Cost/Student</th><th>Total Revenue</th><th>Risk</th>
+        </tr></thead><tbody>`;
+    
+    filteredTrips.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
+        const payments = tripPayments.filter(p => p.tripId === t.id);
+        const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+        const riskClass = t.risk === 'High' ? 'risk-high' : (t.risk === 'Medium' ? 'risk-medium' : 'risk-low');
+        
+        html += `<tr>
+            <td>${t.destination}</td>
+            <td>${new Date(t.date).toLocaleDateString()}</td>
+            <td>${t.teacherName || 'N/A'}</td>
+            <td>${t.classes}</td>
+            <td>${payments.length}</td>
+            <td>KSh ${t.cost.toLocaleString()}</td>
+            <td>KSh ${totalRevenue.toLocaleString()}</td>
+            <td class="${riskClass}">${t.risk || 'Low'}</td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+    return html;
+}
+function generateFinancialReport() {
+    const totalExpected = fees.reduce((sum, f) => sum + f.amount, 0);
+    const totalCollected = fees.reduce((sum, f) => sum + f.amount, 0);
+    
+    // Group by payment mode
+    const modeTotals = {};
+    fees.forEach(f => {
+        modeTotals[f.mode] = (modeTotals[f.mode] || 0) + f.amount;
+    });
+    
+    // Group by month
+    const monthlyTotals = {};
+    fees.forEach(f => {
+        const month = new Date(f.date).toLocaleString('default', { month: 'long', year: 'numeric' });
+        monthlyTotals[month] = (monthlyTotals[month] || 0) + f.amount;
+    });
+    
+    let html = `<div class="report-header"><h3>💰 Financial Summary Report</h3>
+        <p>Term: ${settings.currentTerm}, Year: ${settings.academicYear}</p></div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Total Fees Collected</div><div class="stat-number">KSh ${totalCollected.toLocaleString()}</div></div>
+            <div class="stat-card"><div class="stat-label">Total Transactions</div><div class="stat-number">${fees.length}</div></div>
+            <div class="stat-card"><div class="stat-label">Unique Students</div><div class="stat-number">${new Set(fees.map(f => f.admission)).size}</div></div>
+        </div>
+        <h4>💰 Collection by Payment Mode</h4>
+        <table class="report-table"><thead><tr><th>Payment Mode</th><th>Amount</th><th>Percentage</th></tr></thead><tbody>`;
+    
+    for (const mode in modeTotals) {
+        const percent = ((modeTotals[mode] / totalCollected) * 100).toFixed(1);
+        html += `<tr><td>${mode}</td><td>KSh ${modeTotals[mode].toLocaleString()}</td><td>${percent}%</td></tr>`;
+    }
+    
+    html += `</tbody></table><h4>📅 Monthly Collection Trend</h4>
+        <table class="report-table"><thead><tr><th>Month</th><th>Amount Collected</th></tr></thead><tbody>`;
+    
+    for (const month in monthlyTotals) {
+        html += `<tr><td>${month}</td><td>KSh ${monthlyTotals[month].toLocaleString()}</td></tr>`;
+    }
+    
+    html += `</tbody></table>`;
+    return html;
+}
+function generateClassReport(className) {
+    if (className === 'all') {
+        return `<div class="report-header"><h3>🏫 Class Report</h3><p>Please select a specific class from the dropdown.</p></div>`;
+    }
+    
+    const classStudents = students.filter(s => s.class === className);
+    if (classStudents.length === 0) {
+        return `<div class="report-header"><h3>🏫 Class Report - ${className}</h3><p>No students found in this class.</p></div>`;
+    }
+    
+    const boys = classStudents.filter(s => s.gender === 'Boy').length;
+    const girls = classStudents.filter(s => s.gender === 'Girl').length;
+    const avgAttendance = classStudents.reduce((sum, s) => sum + getStudentAttendanceRate(s.admission), 0) / classStudents.length;
+    const avgScore = classStudents.reduce((sum, s) => sum + getStudentAvgScore(s.admission), 0) / classStudents.length;
+    const totalBalance = classStudents.reduce((sum, s) => sum + calculateStudentBalance(s.admission), 0);
+    const atRisk = classStudents.filter(s => calculateRiskLevel(s.admission) === 'High').length;
+    
+    let html = `<div class="report-header"><h3>🏫 Class Report - ${className}</h3>
+        <p>Generated: ${new Date().toLocaleString()}</p></div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Total Students</div><div class="stat-number">${classStudents.length}</div></div>
+            <div class="stat-card"><div class="stat-label">Boys / Girls</div><div class="stat-number">${boys} / ${girls}</div></div>
+            <div class="stat-card"><div class="stat-label">Avg Attendance</div><div class="stat-number">${avgAttendance.toFixed(1)}%</div></div>
+            <div class="stat-card"><div class="stat-label">Avg Score</div><div class="stat-number">${avgScore.toFixed(1)}%</div></div>
+            <div class="stat-card"><div class="stat-label">Total Balance</div><div class="stat-number">KSh ${totalBalance.toLocaleString()}</div></div>
+            <div class="stat-card"><div class="stat-label">At Risk</div><div class="stat-number">${atRisk}</div></div>
+        </div>
+        <h4>📋 Student List</h4>
+        <table class="report-table"><thead><tr>
+            <th>Admission</th><th>Name</th><th>Gender</th><th>Parent Name</th><th>Parent Phone</th><th>Attendance</th><th>Avg Score</th><th>Balance</th><th>Risk</th>
+        </tr></thead><tbody>`;
+    
+    classStudents.forEach(s => {
+        const attendance = getStudentAttendanceRate(s.admission).toFixed(1);
+        const avgScore = getStudentAvgScore(s.admission).toFixed(1);
+        const balance = calculateStudentBalance(s.admission);
+        const risk = calculateRiskLevel(s.admission);
+        const riskClass = risk === 'High' ? 'risk-high' : (risk === 'Medium' ? 'risk-medium' : 'risk-low');
+        
+        html += `<tr>
+            <td>${s.admission}</td>
+            <td>${s.name}</td>
+            <td>${s.gender}</td>
+            <td>${s.parentName || 'N/A'}</td>
+            <td>${s.parentPhone || 'N/A'}</td>
+            <td>${attendance}%</td>
+            <td>${avgScore}%</td>
+            <td>KSh ${balance.toLocaleString()}</td>
+            <td class="${riskClass}">${risk}</td>
+        </tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    return html;
+}
 function printReport() { printSection('report-print'); }
 function printIndividualReport() {
     const admission = prompt('Enter student admission number:');
@@ -6225,48 +6605,6 @@ async function syncAttendanceToFirebase() {
         showNotification('✅ Attendance synced to cloud');
     } catch (error) { console.error('Error syncing attendance:', error); }
 }
-
-async function loadFromFirebase() {
-    showNotification('⏳ Loading from Firebase...');
-    try {
-        const studentsSnapshot = await db.collection('students').get();
-        if (!studentsSnapshot.empty) {
-            const firebaseStudents = [];
-            studentsSnapshot.forEach(doc => { if (doc.id !== '_setup') firebaseStudents.push(doc.data()); });
-            if (firebaseStudents.length > 0) {
-                firebaseStudents.forEach(fbStudent => { const existingIndex = students.findIndex(s => s.admission === fbStudent.admission); if (existingIndex >= 0) students[existingIndex] = { ...students[existingIndex], ...fbStudent }; else students.push(fbStudent); });
-                localStorage.setItem('students', JSON.stringify(students));
-                loadStudents();
-            }
-        }
-        const teachersSnapshot = await db.collection('teachers').get();
-        if (!teachersSnapshot.empty) {
-            const firebaseTeachers = [];
-            teachersSnapshot.forEach(doc => { if (doc.id !== '_setup') firebaseTeachers.push(doc.data()); });
-            if (firebaseTeachers.length > 0) {
-                firebaseTeachers.forEach(fbTeacher => { const existingIndex = teachers.findIndex(t => t.tsc === fbTeacher.tsc); if (existingIndex >= 0) teachers[existingIndex] = { ...teachers[existingIndex], ...fbTeacher }; else teachers.push(fbTeacher); });
-                localStorage.setItem('teachers', JSON.stringify(teachers));
-                loadTeachers();
-            }
-        }
-        const today = new Date().toISOString().split('T')[0];
-        const attendanceDoc = await db.collection('attendance').doc(today).get();
-        if (attendanceDoc.exists && attendanceDoc.data().classes) {
-            attendanceDoc.data().classes.forEach(cls => {
-                const row = document.querySelector(`tr[data-class="${cls.class}"]`);
-                if (row) {
-                    row.querySelector('.c-b').innerText = cls.boys; row.querySelector('.c-g').innerText = cls.girls; row.querySelector('.c-t').innerText = cls.total;
-                    row.querySelector('.c-l').innerText = cls.lunch; row.querySelector('.c-n').innerText = cls.new; row.querySelector('.c-nr').innerText = cls.nr;
-                    row.querySelector('.c-a').innerText = cls.absent; row.querySelector('.c-names').innerText = cls.absentNames; row.querySelector('.c-percent').innerText = cls.attendancePercent;
-                }
-            });
-            calculateTotals(); updateStatistics();
-        }
-        showNotification('✅ Data loaded from Firebase');
-        document.getElementById('lastSyncStatus').value = `Restored from Firebase at ${new Date().toLocaleTimeString()}`;
-    } catch (error) { console.error('Error loading from Firebase:', error); showNotification('❌ Error loading from Firebase'); }
-}
-
 async function syncAllToFirebase() {
     showNotification('⏳ Syncing all data to Firebase...');
     try {
