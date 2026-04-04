@@ -854,6 +854,56 @@
             margin-bottom: 15px;
             border-radius: 8px;
         }
+        /* Loading Spinner for Email Sending */
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 20px auto;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Better Floating Button Position */
+.floating-rollcall-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 999;
+}
+
+.floating-rollcall-btn button {
+    padding: 12px 20px;
+    font-size: 14px;
+    border-radius: 40px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    background: linear-gradient(135deg, #27ae60, #1e8449);
+    transition: all 0.3s ease;
+}
+
+.floating-rollcall-btn button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 768px) {
+    .floating-rollcall-btn button {
+        padding: 8px 15px;
+        font-size: 12px;
+    }
+}
+
+@media print {
+    .floating-rollcall-btn {
+        display: none !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -898,12 +948,12 @@
 <div class="offline-indicator" id="offlineIndicator">🟢 Online</div>
 
 <!-- Floating Roll Call Button -->
-<div class="floating-rollcall-btn">
-    <button class="btn btn-success" onclick="showRollCallEntryForm()">
+<!-- Floating Roll Call Button - Repositioned -->
+<div class="floating-rollcall-btn" style="position: fixed; bottom: 80px; right: 20px; z-index: 999;">
+    <button class="btn btn-success" onclick="showRollCallEntryForm()" style="padding: 12px 20px; font-size: 14px; border-radius: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
         ➕ QUICK ROLL CALL
     </button>
 </div>
-
 <div class="container" id="mainContainer">
     <!-- Header -->
     <div class="main-header">
@@ -2767,7 +2817,44 @@
         </div>
     </div>
 </div>
-
+<!-- Event Email Composition Modal -->
+<div id="eventEmailModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <h3>📧 Compose Event Email</h3>
+        
+        <div class="email-custom-area" style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <p><strong>📅 Event:</strong> <span id="eventNameDisplay"></span></p>
+            <p><strong>📆 Date:</strong> <span id="eventDateDisplay"></span></p>
+            <p><strong>📊 Type:</strong> <span id="eventTypeDisplay"></span></p>
+            <p><strong>👥 Recipients:</strong> <span id="recipientCount">0</span> parents with email</p>
+        </div>
+        
+        <div class="form-group">
+            <label>📝 Email Subject *</label>
+            <input type="text" id="eventEmailSubject" class="search-box" style="width: 100%;" placeholder="Enter email subject...">
+        </div>
+        
+        <div class="form-group">
+            <label>💬 Email Message *</label>
+            <textarea id="eventEmailMessage" rows="12" class="search-box" style="width: 100%; font-family: inherit;" placeholder="Write your custom message here..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>📎 Quick Templates</label>
+            <div class="control-row">
+                <button class="btn btn-info" onclick="loadEventTemplate('meeting')">📋 PTA Meeting Template</button>
+                <button class="btn btn-info" onclick="loadEventTemplate('sports')">🏃 Sports Day Template</button>
+                <button class="btn btn-info" onclick="loadEventTemplate('exam')">📝 Exam Template</button>
+                <button class="btn btn-info" onclick="loadEventTemplate('trip')">🚌 Trip Template</button>
+            </div>
+        </div>
+        <div class="control-row" style="justify-content: flex-end; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-primary" onclick="previewEventEmail()">👁️ Preview Email</button>
+            <button class="btn btn-success" onclick="sendEventEmailFromModal()">📧 Send to All Parents</button>
+            <button class="btn btn-danger" onclick="closeModal('eventEmailModal')">Cancel</button>
+        </div>
+    </div>
+</div>
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -2835,11 +2922,13 @@ let chart = null;
 let editingIndex = -1;
 let excelData = [];
 
-const classList = [
+let classList = JSON.parse(localStorage.getItem('classList')) || [
     "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", 
     "Grade 6", "Grade 7", "Grade 8", "Grade 9"
 ];
-
+function saveClassList() {
+    localStorage.setItem('classList', JSON.stringify(classList));
+}
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const timeSlots = ["08:00-08:40", "08:40-09:20", "09:20-10:00", "10:00-10:40", "11:00-11:40", "11:40-12:20", "12:20-13:00", "14:00-14:40", "14:40-15:20", "15:20-16:00"];
 
@@ -3029,6 +3118,15 @@ async function sendEmail(to, subject, message) {
 
 // ========== SYSTEM INITIALIZATION ==========
 function initializeSystem() {
+    // Reload classList from localStorage at startup
+    const savedClassList = localStorage.getItem('classList');
+    if (savedClassList) {
+        classList = JSON.parse(savedClassList);
+    } else {
+        classList = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9"];
+        saveClassList();
+    }
+    
     updateDate();
     buildTable();
     loadClassSelectors();
@@ -3054,6 +3152,7 @@ function initializeSystem() {
     loadPendingResultsCount();
     logActivity('System initialized');
     
+    // Initialize Firebase and check connection
     setTimeout(() => {
         checkFirebaseConnection();
         if (navigator.onLine) {
@@ -4439,41 +4538,189 @@ function showEventCalendar() {
     document.getElementById('parentChildrenList').innerHTML = html;
 }
 
-async function sendEventEmail(eventName, date, type) {
+// Store current event data
+let currentEventData = { eventName: '', eventDate: '', eventType: '' };
+
+function showEventCalendar() {
+    const events = [
+        { date: '2026-03-15', event: 'PTA Meeting', type: 'meeting' },
+        { date: '2026-03-20', event: 'Sports Day', type: 'sports' },
+        { date: '2026-03-25', event: 'End Term Exams Start', type: 'exam' },
+        { date: '2026-04-05', event: 'School Trip - National Museum', type: 'trip' }
+    ];
+    
+    let html = '<h4>📅 Upcoming Events</h4>';
+    html += '<div style="overflow-x: auto;">';
+    html += '<table class="parent-display-table"><thead><tr>';
+    html += '<th>Date</th><th>Event</th><th>Type</th><th>Actions</th>';
+    html += '</tr></thead><tbody>';
+    
+    events.forEach(e => {
+        html += `<tr>
+            <td>${e.date}</td>
+            <td>${e.event}</td>
+            <td><span class="badge badge-info">${e.type}</span></td>
+            <td>
+                <button class="btn btn-primary" onclick="openEventEmailModal('${e.event}', '${e.date}', '${e.type}')">
+                    📧 Compose Email
+                </button>
+            </td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    html += '<div class="email-custom-area" style="margin-top: 15px;">';
+    html += '<strong>💡 Tip:</strong> Click "Compose Email" to write and preview your custom message before sending!';
+    html += '</div>';
+    
+    document.getElementById('parentChildrenList').innerHTML = html;
+}
+
+function openEventEmailModal(eventName, eventDate, eventType) {
+    currentEventData = { eventName, eventDate, eventType };
+    
+    document.getElementById('eventNameDisplay').innerText = eventName;
+    document.getElementById('eventDateDisplay').innerText = eventDate;
+    document.getElementById('eventTypeDisplay').innerText = eventType.toUpperCase();
+    
+    // Count parents with email
     const parentsWithEmail = students.filter(s => s.parentEmail).map(s => s.parentEmail);
     const uniqueEmails = [...new Set(parentsWithEmail)];
+    document.getElementById('recipientCount').innerText = uniqueEmails.length;
     
-    let subject = '';
-    let message = '';
+    // Set default subject
+    document.getElementById('eventEmailSubject').value = `${eventName} - ${eventDate} - ${settings.schoolName}`;
+    
+    // Load default template based on type
+    loadEventTemplate(eventType);
+    
+    document.getElementById('eventEmailModal').style.display = 'flex';
+}
+
+function loadEventTemplate(type) {
+    let defaultMessage = `Dear Parent/Guardian,\n\n`;
     
     switch(type) {
         case 'meeting':
-            subject = `PTA Meeting Invitation - ${date}`;
-            message = `Dear Parent,\n\nYou are cordially invited to the PTA Meeting scheduled for ${date} at 4:00 PM in the school hall.\n\nYour presence is highly valued.\n\n${settings.emailSignature}`;
+            defaultMessage += `You are cordially invited to the PTA Meeting scheduled for ${currentEventData.eventDate} at 4:00 PM in the school hall.\n\nAgenda:\n• Academic progress review\n• Upcoming events planning\n• Fundraising activities\n• Q&A session\n\nYour presence is highly valued.\n\n`;
             break;
         case 'sports':
-            subject = `Sports Day Information - ${date}`;
-            message = `Dear Parent,\n\nSports Day will be held on ${date} from 8:00 AM to 4:00 PM.\n\nParents are welcome to attend.\n\n${settings.emailSignature}`;
+            defaultMessage += `We are pleased to inform you that Sports Day will be held on ${currentEventData.eventDate} from 8:00 AM to 4:00 PM.\n\nYour child will be participating in various athletic activities. Parents are welcome to attend and cheer for their children.\n\n`;
             break;
         case 'exam':
-            subject = `End Term Exams Starting ${date}`;
-            message = `Dear Parent,\n\nEnd Term Examinations will commence on ${date}.\n\nPlease ensure your child prepares adequately.\n\n${settings.emailSignature}`;
+            defaultMessage += `This is to inform you that End Term Examinations will commence on ${currentEventData.eventDate}.\n\nPlease ensure your child:\n• Prepares adequately\n• Attends school daily during the exam period\n• Gets adequate rest\n\nA detailed exam timetable has been shared with the students.\n\n`;
             break;
         case 'trip':
-            subject = `School Trip Information - ${eventName}`;
-            message = `Dear Parent,\n\nA school trip to ${eventName} will take place on ${date}.\n\nPermission slips are available at the school office.\n\n${settings.emailSignature}`;
+            defaultMessage += `We are excited to announce a school trip to ${currentEventData.eventName} on ${currentEventData.eventDate}.\n\nDetails:\n• Departure: 8:00 AM\n• Return: 4:00 PM\n• Cost: KSh 500 (includes transport and lunch)\n\nPermission slips are available at the school office. Please sign and return by ${new Date(new Date(currentEventData.eventDate).setDate(new Date(currentEventData.eventDate).getDate()-7)).toISOString().split('T')[0]}.\n\n`;
             break;
+        default:
+            defaultMessage += `This is to inform you about the upcoming ${currentEventData.eventName} on ${currentEventData.eventDate}.\n\nPlease make the necessary arrangements.\n\n`;
     }
     
-    let sentCount = 0;
-    for (const email of uniqueEmails) {
-        const sent = await sendEmail(email, subject, message);
-        if (sent) sentCount++;
-    }
+    defaultMessage += `Thank you for your continued support.\n\nBest regards,\n${settings.emailSignature}`;
     
-    showNotification(`📧 Sent ${sentCount} emails about ${eventName}`);
+    document.getElementById('eventEmailMessage').value = defaultMessage;
 }
 
+function previewEventEmail() {
+    const subject = document.getElementById('eventEmailSubject').value;
+    const message = document.getElementById('eventEmailMessage').value;
+    const recipientCount = document.getElementById('recipientCount').innerText;
+    
+    // Create preview modal
+    const previewHtml = `
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 20000; display: flex; justify-content: center; align-items: center;">
+            <div style="background: white; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border-radius: 15px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">📧 Email Preview</h3>
+                <div style="background: #f0f0f0; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <p><strong>To:</strong> ${recipientCount} parents</p>
+                    <p><strong>Subject:</strong> ${subject}</p>
+                </div>
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 20px; white-space: pre-wrap; font-family: monospace; font-size: 13px;">
+                    ${message.replace(/\n/g, '<br>')}
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-success" onclick="document.getElementById('emailPreviewOverlay').remove(); sendEventEmailFromModal();">📧 Send Now</button>
+                    <button class="btn btn-danger" onclick="document.getElementById('emailPreviewOverlay').remove();">✖ Close Preview</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing preview if any
+    const existingPreview = document.getElementById('emailPreviewOverlay');
+    if (existingPreview) existingPreview.remove();
+    
+    // Create preview overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'emailPreviewOverlay';
+    overlay.innerHTML = previewHtml;
+    document.body.appendChild(overlay);
+}
+
+async function sendEventEmailFromModal() {
+    const subject = document.getElementById('eventEmailSubject').value;
+    let message = document.getElementById('eventEmailMessage').value;
+    const recipientCount = parseInt(document.getElementById('recipientCount').innerText);
+    
+    if (!subject.trim()) {
+        alert('❌ Please enter an email subject');
+        return;
+    }
+    
+    if (!message.trim()) {
+        alert('❌ Please enter an email message');
+        return;
+    }
+    
+    if (!message.includes(settings.emailSignature)) {
+        message += '\n\n' + settings.emailSignature;
+    }
+    
+    if (recipientCount === 0) {
+        alert('❌ No parent emails found in the system!');
+        return;
+    }
+    
+    if (!confirm(`Send this email to ${recipientCount} parents?\n\nSubject: ${subject}\n\nClick OK to send.`)) {
+        return;
+    }
+    
+    // Show sending progress
+    const progressDiv = document.createElement('div');
+    progressDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 20001; text-align: center;';
+    progressDiv.innerHTML = '<h3>📧 Sending Emails...</h3><p>Please wait...</p><div class="loading-spinner"></div>';
+    document.body.appendChild(progressDiv);
+    
+    const parentsWithEmail = students.filter(s => s.parentEmail).map(s => s.parentEmail);
+    const uniqueEmails = [...new Set(parentsWithEmail)];
+    
+    let sentCount = 0;
+    for (let i = 0; i < uniqueEmails.length; i++) {
+        const sent = await sendEmail(uniqueEmails[i], subject, message);
+        if (sent) sentCount++;
+        // Update progress
+        progressDiv.innerHTML = `<h3>📧 Sending Emails...</h3><p>Sent ${sentCount} of ${uniqueEmails.length}</p><div class="loading-spinner"></div>`;
+        await new Promise(r => setTimeout(r, 500));
+    }
+    
+    progressDiv.remove();
+    
+    // Remove preview if exists
+    const existingPreview = document.getElementById('emailPreviewOverlay');
+    if (existingPreview) existingPreview.remove();
+    
+    closeModal('eventEmailModal');
+    
+    alert(`✅ Email sent to ${sentCount} parents about ${currentEventData.eventName}`);
+    showNotification(`📧 Sent ${sentCount} emails about ${currentEventData.eventName}`);
+    logActivity(`Sent custom event email about ${currentEventData.eventName} to ${sentCount} parents`);
+}
+
+// Keep old function for compatibility
+function sendEventEmail(eventName, date, type) {
+    openEventEmailModal(eventName, date, type);
+}
 function sendPTAInvites() { sendEventEmail('PTA Meeting', '2026-03-15', 'meeting'); }
 function sendSportsDayInfo() { sendEventEmail('Sports Day', '2026-03-20', 'sports'); }
 function sendExamReminders() { sendEventEmail('End Term Exams', '2026-03-25', 'exam'); }
@@ -4572,11 +4819,26 @@ function addNewClass() {
     const room = document.getElementById('newClassRoom').value.trim();
     const capacity = document.getElementById('newClassCapacity').value;
     
-    if (!className) { alert('Please enter class name'); return; }
-    if (classList.includes(className)) { alert('Class already exists!'); return; }
+    if (!className) { 
+        alert('Please enter class name'); 
+        return; 
+    }
+    if (classList.includes(className)) { 
+        alert('Class already exists!'); 
+        return; 
+    }
     
     classList.push(className);
-    classes.push({ name: className, grade: className.replace(/[^0-9]/g, '') || 'PP', streams: ["A"], teacher: teacher || null, room: room || null, capacity: parseInt(capacity) || 40 });
+    saveClassList(); // Save to localStorage
+    
+    classes.push({ 
+        name: className, 
+        grade: className.replace(/[^0-9]/g, '') || 'PP', 
+        streams: ["A"], 
+        teacher: teacher || null, 
+        room: room || null, 
+        capacity: parseInt(capacity) || 40 
+    });
     localStorage.setItem('classes', JSON.stringify(classes));
     
     buildTable();
@@ -4587,7 +4849,6 @@ function addNewClass() {
     logActivity(`Added new class: ${className}`);
     showNotification('✅ Class added successfully!');
 }
-
 function showRemoveClassModal() {
     const select = document.getElementById('removeClassSelect');
     select.innerHTML = '<option value="">Select Class</option>';
@@ -4597,14 +4858,27 @@ function showRemoveClassModal() {
 
 function removeClass() {
     const className = document.getElementById('removeClassSelect').value;
-    const confirm = document.getElementById('confirmDelete').value;
-    if (!className) { alert('Please select a class'); return; }
-    if (confirm !== 'DELETE') { alert('Please type DELETE to confirm'); return; }
+    const confirmText = document.getElementById('confirmDelete').value;
     
+    if (!className) { 
+        alert('Please select a class'); 
+        return; 
+    }
+    if (confirmText !== 'DELETE') { 
+        alert('Please type DELETE to confirm'); 
+        return; 
+    }
+    
+    // Remove students in this class
     students = students.filter(s => s.class !== className);
     localStorage.setItem('students', JSON.stringify(students));
+    
+    // Remove from classList
     const index = classList.indexOf(className);
     if (index > -1) classList.splice(index, 1);
+    saveClassList(); // Save to localStorage
+    
+    // Remove from classes array
     classes = classes.filter(c => c.name !== className);
     localStorage.setItem('classes', JSON.stringify(classes));
     
@@ -4616,23 +4890,29 @@ function removeClass() {
     logActivity(`Removed class: ${className}`);
     showNotification('✅ Class removed successfully!');
 }
-
 function removeSingleClass(className) {
     if (confirm(`Remove ${className}? This will also remove all students in this class.`)) {
+        // Remove students in this class
         students = students.filter(s => s.class !== className);
         localStorage.setItem('students', JSON.stringify(students));
+        
+        // Remove from classList
         const index = classList.indexOf(className);
         if (index > -1) classList.splice(index, 1);
+        saveClassList(); // Save to localStorage
+        
+        // Remove from classes array
         classes = classes.filter(c => c.name !== className);
         localStorage.setItem('classes', JSON.stringify(classes));
+        
         buildTable();
         loadClassSelectors();
         loadClasses();
         loadClassDropdowns();
-        showNotification('✅ Class removed');
+        logActivity(`Removed class: ${className}`);
+        showNotification('✅ Class removed successfully!');
     }
 }
-
 function refreshClassList() { loadClasses(); showNotification('🔄 Class list refreshed'); }
 
 function editClassDetails(className) {
