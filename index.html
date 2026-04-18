@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Shiners Peak Climbers School - ULTRA School ERP System with Firebase</title>
+    <title> shinners Peak Climbers School - ULTRA School ERP System with Firebase</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
@@ -912,9 +912,9 @@
 <div id="loginOverlay">
     <div class="login-container">
         <div style="text-align: center; margin-bottom: 25px;">
-            <img src="Logo.jpeg" alt="Shiners Peak Climbers Logo" style="height: 90px; width: 90px; border-radius: 50%; border: 3px solid #3498db; background: white; object-fit: contain;">
+            <img src="Logo.jpeg" alt="shinners Peak Climbers Logo" style="height: 90px; width: 90px; border-radius: 50%; border: 3px solid #3498db; background: white; object-fit: contain;">
         </div>
-        <h2 style="margin-top: 0; margin-bottom: 10px;">Shiners Peak Climbers School</h2>
+        <h2 style="margin-top: 0; margin-bottom: 10px;">shinners Peak Climbers School</h2>
         <h3 style="color: #7f8c8d; margin-bottom: 30px; font-weight: normal;">Admin Login</h3>
         
         <input type="text" id="loginUsername" placeholder="Username" value="admin">
@@ -932,7 +932,7 @@
         <h3>🔐 Reset Password</h3>
         <div class="form-group">
             <label>Recovery Email</label>
-            <input type="email" id="recoveryEmail" placeholder="Enter your recovery email" value="melvinmusee2022@gmail.com">
+            <input type="email" id="recoveryEmail" placeholder="Enter your recovery email" value="shinners@shinners.co.ke">
         </div>
         <div class="form-group">
             <label>OTP Code</label>
@@ -952,9 +952,9 @@
     <div class="main-header">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 20px;">
-                <img src="Logo.jpeg" alt="Shiners Peak Logo" style="height: 80px; width: 80px; border-radius: 50%; border: 3px solid white; background: white; object-fit: contain;">
+                <img src="Logo.jpeg" alt="shinners Peak Logo" style="height: 80px; width: 80px; border-radius: 50%; border: 3px solid white; background: white; object-fit: contain;">
                 <div style="text-align: left;">
-                    <h1 id="schoolNameHeader" style="margin: 0;">Shiners Peak Climbers School</h1>
+                    <h1 id="schoolNameHeader" style="margin: 0;">shinners Peak Climbers School</h1>
                     <p style="margin: 0; font-weight: bold; letter-spacing: 1px;">AIMING HIGHER DAILY</p>
                 </div>
             </div>
@@ -1707,7 +1707,7 @@
             
             <div class="form-group">
                 <label>School Name</label>
-                <input type="text" id="schoolName" value="Shiners Peak Climbers School" class="search-box" style="width: 100%;">
+                <input type="text" id="schoolName" value="shinners Peak Climbers School" class="search-box" style="width: 100%;">
             </div>
             
             <div class="form-group">
@@ -1734,12 +1734,12 @@
             
             <div class="form-group">
                 <label>Recovery Email</label>
-                <input type="email" id="recoveryEmailSettings" value="melvinmusee2022@gmail.com" class="search-box" style="width: 100%;">
+                <input type="email" id="recoveryEmailSettings" value="shinners@shinners.co.ke" class="search-box" style="width: 100%;">
             </div>
             
             <div class="form-group">
                 <label>Email Signature</label>
-                <input type="text" id="emailSignature" value="Shiners Peak Climbers School Administration" class="search-box" style="width: 100%;">
+                <input type="text" id="emailSignature" value="shinners Peak Climbers School Administration" class="search-box" style="width: 100%;">
             </div>
             
             <div class="form-group">
@@ -1761,7 +1761,7 @@
         <!-- Firebase Settings Panel -->
 <div class="paper" style="margin-top: 20px;">
     <h4>☁️ Firebase Cloud Sync</h4>
-    <p>Project: <strong>shiners-peak-47e5c</strong></p>
+    <p>Project: <strong>shinners-peak-47e5c</strong></p>
     <p>Current Firebase Status: <span id="firebaseStatus" class="firebase-status firebase-checking">Checking...</span></p>
     <div class="control-row">
         <button class="btn btn-info" onclick="checkFirebaseConnection()">Check Connection</button>
@@ -2860,9 +2860,9 @@
 // ========== FIREBASE CONFIGURATION ==========
 const firebaseConfig = {
     apiKey: "AIzaSyBQ8sg7XjBp8G-tSWqxF4Fyjdmfs26bTZI",
-    authDomain: "shiners-peak-47e5c.firebaseapp.com",
-    projectId: "shiners-peak-47e5c",
-    storageBucket: "shiners-peak-47e5c.firebasestorage.app",
+    authDomain: "shinners-peak-47e5c.firebaseapp.com",
+    projectId: "shinners-peak-47e5c",
+    storageBucket: "shinners-peak-47e5c.firebasestorage.app",
     messagingSenderId: "572413456106",
     appId: "1:572413456106:web:7258da4d8611b9495af193",
     measurementId: "G-ZG5RDTT0FQ"
@@ -2879,7 +2879,7 @@ const analytics = firebase.analytics();
 let isAuthenticated = false;
 let ADMIN_PASSWORD = localStorage.getItem('adminPassword') || "1788";
 let ADMIN_USERNAME = "admin";
-let recoveryEmail = localStorage.getItem('recoveryEmail') || "melvinmusee2022@gmail.com";
+let recoveryEmail = localStorage.getItem('recoveryEmail') || "shinners@shinners.co.ke";
 let otpStore = null;
 let otpExpiry = null;
 let isOTPMode = false;
@@ -2900,11 +2900,11 @@ let lessonPlans = JSON.parse(localStorage.getItem('lessonPlans')) || [];
 let knecRegistrations = JSON.parse(localStorage.getItem('knecRegistrations')) || { kepsea: [], kjsea: [] };
 
 let settings = JSON.parse(localStorage.getItem('settings')) || {
-    schoolName: 'Shiners Peak Climbers School',
+    schoolName: 'shinners Peak Climbers School',
     currentTerm: '1',
     academicYear: '2026',
     theme: 'light',
-    emailSignature: 'Shiners Peak Climbers School Administration'
+    emailSignature: 'shinners Peak Climbers School Administration'
 };
 
 let chart = null;
@@ -3023,7 +3023,7 @@ function sendOTP() {
     if (email === recoveryEmail) {
         otpStore = Math.floor(100000 + Math.random() * 900000).toString();
         otpExpiry = new Date().getTime() + 300000;
-        const subject = 'Password Reset OTP - Shiners Peak Climbers School';
+        const subject = 'Password Reset OTP - shinners Peak Climbers School';
         const message = `Your OTP for password reset is: ${otpStore}\n\nThis code will expire in 5 minutes.\n\nIf you did not request this, please ignore this email.`;
         
         sendEmail(recoveryEmail, subject, message).then(() => {
@@ -6449,13 +6449,13 @@ function scheduleEmailReport() {
 
 // ========== SETTINGS FUNCTIONS ==========
 function applySettings() {
-    document.getElementById('schoolName').value = settings.schoolName || 'Shiners Peak Climbers School';
+    document.getElementById('schoolName').value = settings.schoolName || 'shinners Peak Climbers School';
     document.getElementById('schoolNameHeader').innerText = ` ${settings.schoolName}`;
     document.getElementById('currentTermSelect').value = settings.currentTerm || '1';
     document.getElementById('academicYear').value = settings.academicYear || '2026';
     document.getElementById('themeSelect').value = settings.theme || 'light';
     document.getElementById('recoveryEmailSettings').value = recoveryEmail;
-    document.getElementById('emailSignature').value = settings.emailSignature || 'Shiners Peak Climbers School Administration';
+    document.getElementById('emailSignature').value = settings.emailSignature || 'shinners Peak Climbers School Administration';
     if (settings.theme === 'dark') document.body.classList.add('dark-mode');
     else document.body.classList.remove('dark-mode');
 }
@@ -6475,8 +6475,8 @@ function saveSettings() {
 }
 
 function resetSettings() {
-    settings = { schoolName: 'Shiners Peak Climbers School', currentTerm: '1', academicYear: '2026', theme: 'light', emailSignature: 'Shiners Peak Climbers School Administration' };
-    recoveryEmail = 'melvinmusee2022@gmail.com';
+    settings = { schoolName: 'shinners Peak Climbers School', currentTerm: '1', academicYear: '2026', theme: 'light', emailSignature: 'shinners Peak Climbers School Administration' };
+    recoveryEmail = 'shinners@shinners.co.ke';
     localStorage.setItem('recoveryEmail', recoveryEmail);
     applySettings();
     showNotification('🔄 Settings reset');
